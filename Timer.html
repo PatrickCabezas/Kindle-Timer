@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Reloj Kindle</title>
+  <link rel="icon" href="data:image/svg+xml,
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+    <text y='.9em' font-size='90'>⏲️</text>
+  </svg>">
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #000;
+      --border: #000;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 12px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .panel {
+      border: 2px solid var(--border);
+      padding: 14px;
+      background: var(--bg);
+    }
+
+    .title {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 0 0 10px;
+      text-align: center;
+    }
+
+    .clock-time {
+      font-size: clamp(2.7rem, 12vw, 5rem);
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.05;
+      word-break: keep-all;
+    }
+
+    .clock-date {
+      margin-top: 10px;
+      text-align: center;
+      font-size: clamp(1rem, 4vw, 1.4rem);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 12px 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 48px;
+    }
+
+    button.active,
+    button:active {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .display {
+      text-align: center;
+      font-size: clamp(2rem, 10vw, 4rem);
+      font-weight: 700;
+      margin: 10px 0 14px;
+      line-height: 1.1;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .controls.single {
+      grid-template-columns: 1fr;
+    }
+
+    .timer-inputs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .field input {
+      width: 100%;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 1.1rem;
+      text-align: center;
+      padding: 10px;
+      min-height: 46px;
+    }
+
+    .hint {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 0.9rem;
+      min-height: 1.2em;
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding: 8px;
+      }
+
+      .panel {
+        padding: 12px;
+      }
+
+      .tabs,
+      .controls,
+      .timer-inputs {
+        gap: 6px;
+      }
+
+      button {
+        font-size: 0.95rem;
+        padding: 10px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel">
+      <h1 class="title">Reloj</h1>
+      <div id="clockTime" class="clock-time">00:00:00</div>
+      <div id="clockDate" class="clock-date">Cargando fecha...</div>
+    </section>
+
+    <section class="panel">
+      <div class="tabs">
+        <button id="tabClock" class="active" type="button">Hora</button>
+        <button id="tabTimer" type="button">Temporizador</button>
+        <button id="tabStopwatch" type="button">Cronómetro</button>
+      </div>
+    </section>
+
+    <section id="sectionClock" class="panel section active">
+      <h2 class="title">Hora actual</h2>
+      <div class="display" id="clockPreview">00:00:00</div>
+      <div class="hint">Se actualiza automáticamente.</div>
+    </section>
+
+    <section id="sectionTimer" class="panel section">
+      <h2 class="title">Temporizador</h2>
+      <div class="timer-inputs">
+        <div class="field">
+          <label for="hoursInput">Horas</label>
+          <input id="hoursInput" type="number" min="0" max="99" value="0" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="minutesInput">Minutos</label>
+          <input id="minutesInput" type="number" min="0" max="59" value="5" inputmode="numeric" />
+        </div>
+        <div class="field">
+          <label for="secondsInput">Segundos</label>
+          <input id="secondsInput" type="number" min="0" max="59" value="0" inputmode="numeric" />
+        </div>
+      </div>
+      <div id="timerDisplay" class="display">00:05:00</div>
+      <div class="controls">
+        <button id="startTimer" type="button">Iniciar</button>
+        <button id="pauseTimer" type="button">Pausar</button>
+        <button id="resetTimer" type="button">Reiniciar</button>
+        <button id="loadTimer" type="button">Cargar tiempo</button>
+      </div>
+      <div id="timerHint" class="hint"></div>
+    </section>
+
+    <section id="sectionStopwatch" class="panel section">
+      <h2 class="title">Cronómetro</h2>
+      <div id="stopwatchDisplay" class="display">00:00:00</div>
+      <div class="controls">
+        <button id="startStopwatch" type="button">Iniciar</button>
+        <button id="pauseStopwatch" type="button">Pausar</button>
+        <button id="resetStopwatch" type="button">Reiniciar</button>
+        <button id="lapStopwatch" type="button">Marca</button>
+      </div>
+      <div id="stopwatchHint" class="hint">Sin marcas.</div>
+    </section>
+  </main>
+
+  <script>
+    const clockTime = document.getElementById('clockTime');
+    const clockDate = document.getElementById('clockDate');
+    const clockPreview = document.getElementById('clockPreview');
+
+    const tabClock = document.getElementById('tabClock');
+    const tabTimer = document.getElementById('tabTimer');
+    const tabStopwatch = document.getElementById('tabStopwatch');
+
+    const sectionClock = document.getElementById('sectionClock');
+    const sectionTimer = document.getElementById('sectionTimer');
+    const sectionStopwatch = document.getElementById('sectionStopwatch');
+
+    const hoursInput = document.getElementById('hoursInput');
+    const minutesInput = document.getElementById('minutesInput');
+    const secondsInput = document.getElementById('secondsInput');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerHint = document.getElementById('timerHint');
+    const startTimer = document.getElementById('startTimer');
+    const pauseTimer = document.getElementById('pauseTimer');
+    const resetTimer = document.getElementById('resetTimer');
+    const loadTimer = document.getElementById('loadTimer');
+
+    const stopwatchDisplay = document.getElementById('stopwatchDisplay');
+    const stopwatchHint = document.getElementById('stopwatchHint');
+    const startStopwatch = document.getElementById('startStopwatch');
+    const pauseStopwatch = document.getElementById('pauseStopwatch');
+    const resetStopwatch = document.getElementById('resetStopwatch');
+    const lapStopwatch = document.getElementById('lapStopwatch');
+
+    function formatTwo(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function formatClock(date) {
+      return [
+        formatTwo(date.getHours()),
+        formatTwo(date.getMinutes()),
+        formatTwo(date.getSeconds())
+      ].join(':');
+    }
+
+    function formatDate(date) {
+      const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      return `${dias[date.getDay()]}, ${date.getDate()} de ${meses[date.getMonth()]} de ${date.getFullYear()}`;
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const time = formatClock(now);
+      clockTime.textContent = time;
+      clockPreview.textContent = time;
+      clockDate.textContent = formatDate(now);
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    function activateTab(tab) {
+      [tabClock, tabTimer, tabStopwatch].forEach(btn => btn.classList.remove('active'));
+      [sectionClock, sectionTimer, sectionStopwatch].forEach(sec => sec.classList.remove('active'));
+
+      if (tab === 'clock') {
+        tabClock.classList.add('active');
+        sectionClock.classList.add('active');
+      } else if (tab === 'timer') {
+        tabTimer.classList.add('active');
+        sectionTimer.classList.add('active');
+      } else {
+        tabStopwatch.classList.add('active');
+        sectionStopwatch.classList.add('active');
+      }
+    }
+
+    tabClock.addEventListener('click', () => activateTab('clock'));
+    tabTimer.addEventListener('click', () => activateTab('timer'));
+    tabStopwatch.addEventListener('click', () => activateTab('stopwatch'));
+
+    let timerInterval = null;
+    let timerRemaining = 300;
+    let timerInitial = 300;
+
+    function sanitizeInput(input, max) {
+      let value = parseInt(input.value || '0', 10);
+      if (Number.isNaN(value) || value < 0) value = 0;
+      if (value > max) value = max;
+      input.value = value;
+      return value;
+    }
+
+    function formatDuration(totalSeconds) {
+      const safe = Math.max(0, totalSeconds);
+      const hours = Math.floor(safe / 3600);
+      const minutes = Math.floor((safe % 3600) / 60);
+      const seconds = safe % 60;
+      return `${formatTwo(hours)}:${formatTwo(minutes)}:${formatTwo(seconds)}`;
+    }
+
+    function loadTimerFromInputs() {
+      const h = sanitizeInput(hoursInput, 99);
+      const m = sanitizeInput(minutesInput, 59);
+      const s = sanitizeInput(secondsInput, 59);
+      timerInitial = (h * 3600) + (m * 60) + s;
+      timerRemaining = timerInitial;
+      timerDisplay.textContent = formatDuration(timerRemaining);
+      timerHint.textContent = timerRemaining > 0 ? 'Tiempo cargado.' : 'Ingresa un tiempo mayor a cero.';
+    }
+
+    loadTimerFromInputs();
+
+    loadTimer.addEventListener('click', loadTimerFromInputs);
+
+    startTimer.addEventListener('click', () => {
+      if (timerRemaining <= 0) {
+        loadTimerFromInputs();
+      }
+      if (timerRemaining <= 0 || timerInterval) return;
+
+      timerHint.textContent = 'Temporizador en marcha.';
+      timerInterval = setInterval(() => {
+        timerRemaining -= 1;
+        timerDisplay.textContent = formatDuration(timerRemaining);
+
+        if (timerRemaining <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          timerRemaining = 0;
+          timerDisplay.textContent = '00:00:00';
+          timerHint.textContent = 'Tiempo finalizado.';
+          alert('Tiempo finalizado');
+        }
+      }, 1000);
+    });
+
+    pauseTimer.addEventListener('click', () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerHint.textContent = 'Temporizador pausado.';
+      }
+    });
+
+    resetTimer.addEventListener('click', () => {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerRemaining = timerInitial;
+      timerDisplay.textContent = formatDuration(timerRemaining);
+      timerHint.textContent = 'Temporizador reiniciado.';
+    });
+
+    let stopwatchInterval = null;
+    let stopwatchSeconds = 0;
+    let lastLapText = 'Sin marcas.';
+
+    function updateStopwatchDisplay() {
+      stopwatchDisplay.textContent = formatDuration(stopwatchSeconds);
+    }
+
+    startStopwatch.addEventListener('click', () => {
+      if (stopwatchInterval) return;
+      stopwatchHint.textContent = lastLapText;
+      stopwatchInterval = setInterval(() => {
+        stopwatchSeconds += 1;
+        updateStopwatchDisplay();
+      }, 1000);
+    });
+
+    pauseStopwatch.addEventListener('click', () => {
+      if (stopwatchInterval) {
+        clearInterval(stopwatchInterval);
+        stopwatchInterval = null;
+      }
+    });
+
+    resetStopwatch.addEventListener('click', () => {
+      clearInterval(stopwatchInterval);
+      stopwatchInterval = null;
+      stopwatchSeconds = 0;
+      lastLapText = 'Sin marcas.';
+      updateStopwatchDisplay();
+      stopwatchHint.textContent = lastLapText;
+    });
+
+    lapStopwatch.addEventListener('click', () => {
+      lastLapText = `Marca: ${formatDuration(stopwatchSeconds)}`;
+      stopwatchHint.textContent = lastLapText;
+    });
+
+    [hoursInput, minutesInput, secondsInput].forEach(input => {
+      input.addEventListener('change', loadTimerFromInputs);
+    });
+  </script>
+</body>
+</html>
